@@ -1,7 +1,7 @@
 # Dash app Stock Prices
 
 # 0. import modules (dcc = dash core components, e.g. Graphs)
-from dash import Dash, html, dcc
+from dash import Dash, html, dcc, Input, Output
 import pandas as pd
 import plotly.express as px
 # plotly is like the matplotlib of a dash app BUT it's JS-based
@@ -74,7 +74,24 @@ app.layout = html.Div([
     dcc.Graph(figure=bar_chart),
     dcc.Graph(figure=barh_chart),
     dcc.Graph(figure=scatter_plot),
+
+    html.Br(), # line break
+    html.Hr(), # horiz rule (underline)
+ 
+    # ✅ Download button
+    # html.Button(button_text,button_id)
+    html.Button("Download full dataset (CSV)", id="btn_download_csv"),
+    dcc.Download(id="download-dataframe-csv"),
 ])
+
+@app.callback(
+    Output("download-dataframe-csv", "data"),
+    Input("btn_download_csv", "n_clicks"),
+    prevent_initial_call=True,
+)
+def download_data_as_csv(n_clicks):
+    # Return the DataFrame as a downloadable CSV
+    return dcc.send_data_frame(top_5_stocks_by_vol_df.to_csv, "top_5_stocks_by_volume.csv")
 
 # 9. run the app (quit any running app first)
 if __name__ == '__main__':
@@ -83,3 +100,8 @@ if __name__ == '__main__':
 # 10. run this terminal command:
 # python 03-dash-app-stocks.py
 
+# LAB: Go to ChatGPT and Paste ALL this code--the whole page. Ask: 
+# 
+# How can I add a button to my Dash app that the user can click to Download ALL source data to their Downloads folder as a CSV file? Here is my Dash app code.
+
+# Please give me ALL the code with your changes inside of it.
