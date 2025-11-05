@@ -65,12 +65,21 @@ line_chart = px.line(
 )
 
 # 5. Make a groupby df called units_by_prod_df, for use by bar chart:
+avg_units_by_prod_df = toys_df.groupby("product", as_index=False)["units"].mean().sort_values(by="units", ascending=False)
 
+print("avg_units_by_prod_df:", avg_units_by_prod_df.shape) # (3, 2)
+print(avg_units_by_prod_df)
 
 # 6. Make the bar chart from the units_by_prod_df:
-
+bar_chart = px.bar(
+    avg_units_by_prod_df,
+    x="product",
+    y="units",
+    title="Avg Units Sold by Product"
+)
 
 # 7. Heat Map: make a df for the heat map
+
 
 # 8. Pivot the heatmap df so that each of the three products has its own column and each of the four regions has its own row
 # and revenue is the value for each cell
@@ -192,8 +201,8 @@ app.layout = boot.Container([
                 style={
                     # set and constrain its width and height
                     # (no distortion, stays inside its Col box)
-                    "height": "180px",
-                    "width": "270px",
+                    "height": "270px",
+                    "width": "405px",
                     "maxWidth":"100%",
                     "maxHeight":"auto",
                     # center the image within its Col box:
@@ -207,9 +216,10 @@ app.layout = boot.Container([
             style = {
                 "border": "3px solid #cbcbcb88",
                 "padding": "10px",
-                "margin": "10px 20px 20px 0", 
+                "background-color": "#cbcbcb88",
+                # "margin": "10px 20px 20px 0", 
                 # T-R-B-L (clockwise from 12:00)
-                "height": "50vh",
+                # "height": "50vh",
             },
             md=4 # when browser is large, toggle to 4-8 split
             # where this col is 4 units wide and all other col(s)
@@ -217,11 +227,20 @@ app.layout = boot.Container([
         ),
         # 30. make another Col (same Row) to hold the graphs
         boot.Col([
-            dcc.Graph(figure=line_chart),
-        ])
-    ]),
-        
-]) # close bootstrap container
+            dcc.Graph(figure=line_chart,
+                style={"height": "450px",}),
+            dcc.Graph(figure=bar_chart,
+                style={"height": "450px",}),
+        ],
+        md=8
+        ),
+    ],
+    className="mt-2"
+    )
+    ],
+    fluid=True,
+) # close bootstrap container
+
 
 
 # 31. define the app callback decorator function which has no name but just runs automatically whenever UI component
