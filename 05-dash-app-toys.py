@@ -183,14 +183,42 @@ app.layout = boot.Container([
      ]), # end Row
                         
     boot.Row([ # 28. Make another row
-        # 29. Make a col with an image inside (toys logo--requires assets folder)
+        # 29. Make a col to hold toys.jpg image
+        #     toys.jpg file goes inside assets/images folders
         boot.Col([
             html.Img(
                 src="./assets/images/toys.jpg",
-                style={"maxHeight":"250px"}
+                # 29B.style the toy image
+                style={
+                    # set and constrain its width and height
+                    # (no distortion, stays inside its Col box)
+                    "height": "180px",
+                    "width": "270px",
+                    "maxWidth":"100%",
+                    "maxHeight":"auto",
+                    # center the image within its Col box:
+                    "display": "block",
+                    "margin": "0 auto",
+                }
             ),
-        ]),
-        # 30. make a Col to hold the graphs
+        ],
+            # 29C. Style col containing toy pic; 
+            # UI controls go under here in new row, same col
+            style = {
+                "border": "3px solid #cbcbcb88",
+                "padding": "10px",
+                "margin": "10px 20px 20px 0", 
+                # T-R-B-L (clockwise from 12:00)
+                "height": "50vh",
+            },
+            md=4 # when browser is large, toggle to 4-8 split
+            # where this col is 4 units wide and all other col(s)
+            # must total the other 8 (of 12) units
+        ),
+        # 30. make another Col (same Row) to hold the graphs
+        boot.Col([
+            dcc.Graph(figure=line_chart),
+        ])
     ]),
         
 ]) # close bootstrap container
