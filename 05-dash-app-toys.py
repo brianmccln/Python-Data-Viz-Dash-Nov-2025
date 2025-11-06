@@ -160,7 +160,7 @@ controls = boot.Card(
 
     # 17. Assign label for the Region dropdown menu
     # "mt-3" == margin-top:12px (clearance above the menu)
-    boot.Label("Region", className="mt-3"),
+    boot.Label("Region", className="mt-4"),
     # 18. Define the Region dropdown menu, which requires the following properties: 
     # id, options, value, multi, clearable, placeholder
     dcc.Dropdown(
@@ -173,35 +173,62 @@ controls = boot.Card(
     ),
 
     # 19. Assign label for the Product dropdown menu
-    boot.Label("Product", className="mt-3"),
+    boot.Label("Product", className="mt-4"),
+    
     # 20. Define the Product dropdown menu:
-     dcc.Dropdown(
+    dcc.Dropdown(
         id="product-dropdown-menu",
         options=prod_options, 
         value=unique_products,
         multi=True, # allows selecting more than one region
         clearable=False, # must select at least ONE region
         placeholder="Select one or more products" # the dropdown menu choices
-    )
+    ),
 
     # 21. Assign label for the Line Chart (called Line Mode as it is interactive)
+    boot.Label("Line Mode", className="mt-5"),
 
     # 22. Define the Line Mode options as Radio Buttons (can only choose one)
-
-                
-    # 23. Specify the options for the radio button set
-
-            # radio buttons run horiz -- not stacked
-
-    # 24. Assign label to Date Range picker
-        
+    boot.RadioItems(
+        id="line-mode-radio-btns",
+        # 23. Specify options for set of 3 radio btns
+        options = [
+            {"label":"Aggregate", "value":"agg"},
+            {"label":"By Region", "value":"region"},
+            {"label":"By Product", "value":"product"},
+        ],
+        value="agg", # set default selection of radio button
+        inline=True # radio btns run horiz -- not stacked vert
+    ),
             
-    # 24. Define the DatePickerRange with these properties:
-    # min_date_allowed, max_date_allowed, start_date, end_date, display_format
-
+    # 24. Assign label to Date Range picker
+    boot.Label("Date Range", className="mt-5"),
+            
+    # 24B. Define DatePickerRange w properties:
+    #  min_date_allowed, max_date_allowed, 
+    #  start_date, end_date, display_format
+    dcc.DatePickerRange(
+        id="date-picker",
+        min_date_allowed = toys_df["date"].min(), # 2023-01-01
+        max_date_allowed = toys_df["date"].max(), # 2023-12-31
+        start_date = toys_df["date"].min(),
+        end_date = toys_df["date"].max(),
+        display_format = "MM DD, YYYY",
+    )
+    ],
+    body=True,
+    className="shadow-sm rounded-3 mt-10" 
     # add drop shadow w rounded corners
+    # MMMM = September
+    # MMM = Sep (or Sept)
+    # MM = 09
+    # M = 9
+    # D = 8
+    # DD = 08
+    # YY = 23
+    # YYYY = 2023
     
-]) # close controls = boot.Card()
+) # close controls = boot.Card()
 
 # Layout App Dashboard with its 3 Charts
 
@@ -234,8 +261,8 @@ app.layout = boot.Container([
                 style={
                     # set and constrain its width and height
                     # (no distortion, stays inside its Col box)
-                    "height": "270px",
-                    "width": "405px",
+                    "height": "180px",
+                    "width": "270px",
                     "maxWidth":"100%",
                     "maxHeight":"auto",
                     # center the image within its Col box:
@@ -248,9 +275,9 @@ app.layout = boot.Container([
             # 29C. Style col containing toy pic; 
             # UI controls go under here in new row, same col
             style = {
-                "border": "3px solid #cbcbcb88",
+                "border-right": "6px solid #cbcbcb88",
                 "padding": "10px",
-                "background-color": "#cbcbcb88",
+                "background-color": "#fff",
                 # "margin": "10px 20px 20px 0", 
                 # T-R-B-L (clockwise from 12:00)
                 # "height": "50vh",
@@ -282,13 +309,17 @@ app.layout = boot.Container([
 @app.callback(
     # 32. specify the output, which are the figures to update; the output has an id which goes here and in the layout
     # what this says is: go to the layout and update the item, which has this id, and update the figure data
+    # the function return values must match Output() in ORDER:
+    # return line_chart, bar_chart, heatmap_fig
     Output("rev-line-chart", "figure"),
     Output("prod-bar-chart", "figure"),
     Output("heatmap-chart", "figure"),
 
     # 33. instruct the function to get its inputs from the UI
     # components that have the following id's and get those values
-    # here we tell the func to get the values of the region and product menus
+    # tell func to get the values of the region and product menus; 
+    # the params of the function must match Input() in ORDER:
+    # def update_figs(selected_regions, selected_products):
     Input("region-dropdown-menu", "value"),
     Input("product-dropdown-menu", "value"),
 
@@ -306,29 +337,28 @@ def update_figs(selected_regions, selected_products):
     # 35. get all the rows that have a 'region' value in unique_regions
     # this is ALL rows, cuz EVERY region is in unique_regions
     # the return value is saved as mask by convention
-    region_mask = toys_df["region"].isin(selected_regions)
-
+    # & for adding more filters, starting w selected_products
+    mask = toys_df["region"].isin(selected_regions) & toys_df["product"].isin(selected_products)
+    
     # 36. re-do the df for use in rebuilding line chart based on the masked values
-    # new_df = df.loc[mask] select only those rows where the region is selected
-    # filter out unselected regions
-    selected_regions_df = toys_df.loc[region_mask]
+    # selected_df = toys_df.loc[mask] select only those rows where the region(s) and product(s) are selected
+    # filter out unselected regions and products
+    selected_df = toys_df.loc[mask]
 
     # 37. update / redeclare the rev_by_date_df using only selected regions
     #.    in the groupby() .. it's revenue by date for use in the line chart
-    selected_regions_revenue_by_date_df = selected_regions_df.groupby("date", as_index=False)["revenue"].sum()
+    selected_revenue_by_date_df = selected_df.groupby("date", as_index=False)["revenue"].sum()
  
     # 38. check which radio btn is selected and use that to make the line chart
     # if Aggregate btn is selected, make unified line
 
-        # 39. update / redeclare the line chart using the updated rev_by_date_df df
-
-        # puts dots on the points connected by the line      
+        # 39. update / redeclare the line chart using the updated rev_by_date_df df  
         
     # 40. else check if the radio button choice is region
 
     # 41. update / redeclare the line chart using the updated data: this is the group by df that only has the region(s) that are selected in dropdown menu: 
     line_chart = px.line(
-        selected_regions_revenue_by_date_df, # only contains rows for selected region(s)
+        selected_revenue_by_date_df, # only contains rows for selected region(s)
         x="date",
         y="revenue",
         title="Weekly Toy Sales Revenue (2023)",
@@ -345,19 +375,31 @@ def update_figs(selected_regions, selected_products):
 
     # 45. update / redeclare the units_by_prod_df using only selected regions; 
     # this is the groupby() df for use by the bar chart
-    selected_regions_avg_units_by_prod_df = selected_regions_df.groupby("product", as_index=False)["units"].mean().sort_values(by="units", ascending=False)
+    selected_avg_units_by_prod_df = selected_df.groupby("product", as_index=False)["units"].mean().sort_values(by="units", ascending=False)
 
     # 46. update / redeclare the bar chart using the updated df
-    bar_chart = px.bar(
-        selected_regions_avg_units_by_prod_df,
-        x="product",
-        y="units",
-        title="Avg Units Sold by Product"
+    bar_chart = px.bar(selected_avg_units_by_prod_df,
+        x="product", y="units", title="Avg Units Sold by Product")
+    
+    # 46B. update the layout to use the updated bar chart:
+    bar_chart.update_layout(margin=dict(l=20,r=20,t=60,b=30))
+
+    # 47. redo the heatmap_df using the updated selected_df
+    heatmap_df = selected_df.groupby(["region","product"],as_index=False)["revenue"].sum()
+    
+    # 47B. pivot the heatmap_df (as we did initially)
+    heatmap_piv_df = heatmap_df.pivot(index="region",columns="product",values="revenue")
+    
+    # 48. update the heatmap using the updated heatmap_piv_df
+    heatmap_fig = px.imshow(
+        heatmap_piv_df,
+        labels=dict(x="Product",y="Region",color="Revenue"),
+        title="Revenue Heatmap: Product by Region",
+        aspect="auto",
     )
-
-    # 47. redeclare the heatmap using the updated rev_by_date_df df
-
-    # 48. update the heatmap
+    
+    # 48B. update the layout to use the updated heatmap fig:
+    heatmap_fig.update_layout(margin=dict(l=20,r=20,t=60,b=30))
 
     # 49. return the updated line chart as specified in Output
     return line_chart, bar_chart, heatmap_fig
