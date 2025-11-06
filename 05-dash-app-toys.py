@@ -78,47 +78,75 @@ bar_chart = px.bar(
     title="Avg Units Sold by Product"
 )
 
-# 7. Heat Map: make a df for the heat map
+# 7. Heat Map: make a df for the heat map: region x product
+heatmap_df = toys_df.groupby(["region","product"],as_index=False)["revenue"].sum()
+print("heatmap_df:", heatmap_df.shape) # (12, 3)
+print(heatmap_df)
 
-
-# 8. Pivot the heatmap df so that each of the three products has its own column and each of the four regions has its own row
-# and revenue is the value for each cell
+# 8. Pivot the heatmap df so that each of the three products has its own column and each of the four regions has its own row and revenue is the value for each cell
+#. 3 col names: unique product: Doodad, Gadget, Widget
+#. 4 row names: unique region: East, North, South, West
+# df.pivot(index_rows_regions,columns_products,values_revenue)
+heatmap_piv_df = heatmap_df.pivot(index="region",columns="product",values="revenue")
+print("heatmap_piv_df:", heatmap_piv_df.shape) # (4, 3)
+print(heatmap_piv_df)
 
 # 9. Plot the heatmap from the heatmap_pivoted_df
+heatmap_fig = px.imshow(
+    heatmap_piv_df,
+    labels=dict(x="Product", y="Region", color="Revenue"),
+    title="Revenue Heatmap: Product by Region",
+    aspect="auto",
+)
 
 # 10. Have the 3 charts update any time changes are made to the UI controls:
-
-
+line_chart.update_yaxes(tickprefix='$', separatethousands=True)
+line_chart.update_layout(margin=dict(l=20,r=20,t=60,b=30))
+bar_chart.update_layout()
+heatmap_fig.update_layout()
 
 # UI CONTROLS
 # 11. Make the region chooser dropdown menu component; start my getting the unique requions into a list
 # menu option example dict: {"label":"East", "value":"East"}
 # unique_regions = ["East","West","North","South"]
-# better to get the unique regions directly from the df:
-
-# print('unique_regions:',unique_regions)
+# better to get the unique regions directly from the df and sort A-Z:
+unique_regions = sorted(toys_df["region"].unique().tolist())
+print('unique_regions:',unique_regions)
+# ['East', 'North', 'South', 'West']
 
 # 12. Using list comprehension, populate region_menu_options list w 4 dictionaries:
+# goal: how do we make this dynamically (instead of hard-coding)..?
+# regions_dict_list = [
+#     {"label":"East", "value":"East"},
+#     {"label":"North", "value":"North"},
+#     {"label":"South", "value":"South"},
+#     {"label":"West", "value":"West"},
+# ]
+# challenge: given the unique_regions, re-make the regions_dict_list:
+regions_dict_list = []
+for reg in unique_regions:
+    reg_dict = {}
+    reg_dict["label"] = reg
+    reg_dict["value"] = reg
+    print(reg_dict)
+    regions_dict_list.append(reg_dict)
+# the above loop works but it is too long-winded: better is to use; list comprehension, to make the list of dicts in ONE line of code
+# new_list = [ return_value for item in list ]
+region_options = [ {"label":r, "value":r} for r in unique_regions ]
+print('region_options:',region_options)
 
+# this list of dictionaries will be passed to the region menu component control
 
-# the dropdown menu component will be passed this list of dictionaries
-# print('region_menu_options:',region_menu_options)
-# default_regions = uniq
+# 13. Make the product options list of dictionaries, also using list comprehension: {"label":"Doodad", "value":"Doodad"}
+unique_products = sorted(toys_df["product"].unique().tolist())
+print('unique_products:',unique_products)
+# ["Doodad","Gadget","Widget"]
 
-# 13. Make a new empty dictionary to hold the menu options
+# 15. using list comprehension, populate prod_options list w 3 dictionaries:
+prod_options = [ {"label":p, "value":p} for p in unique_products ]
+print('prod_options:',prod_options)
 
-# menu option example dict: {"label":"Doodad", "value":"Doodad"}
-# unique_proudcts = ["Doodad","Gadget","Widget"]
-
-# 14. get the unique products directly from the df:
-
-
-# print('unique_products:',unique_products)
-
-# 15. using list comprehension, populate product_menu_options list w 4 dictionaries:
-
-# the dropdown menu component will be passed this list of dictionaries
-# print('product_menu_options:',product_menu_options)
+# the Product dropdown menu component will be passed this list of dictionaries
 
 # UI CONTROL HOLDER
 # controls go inside a Bootstrap Card component holder
@@ -126,49 +154,54 @@ bar_chart = px.bar(
 # the control itself -- the dropdown menu -- is a dcc component
 # contols will consist of a Region and Product dropdown menu
 
-# 16. define the controls as a 
+# 16. define the controls as a bootstrap Card holder
+controls = boot.Card(
+    [
 
-# 17. Assign label for the Region dropdown menu
+    # 17. Assign label for the Region dropdown menu
+    # "mt-3" == margin-top:12px (clearance above the menu)
+    boot.Label("Region", className="mt-3"),
+    # 18. Define the Region dropdown menu, which requires the following properties: 
+    # id, options, value, multi, clearable, placeholder
+    dcc.Dropdown(
+        id="region-dropdown-menu",
+        options=region_options, 
+        value=unique_regions,
+        multi=True, # allows selecting more than one region
+        clearable=False, # must select at least ONE region
+        placeholder="Select one or more regions" # the dropdown menu choices
+    ),
 
-# 18. Define the Region dropdown menu, which requires the following properties: 
-#     id, options, value, multi, clearable and placeholder props
+    # 19. Assign label for the Product dropdown menu
+    boot.Label("Product", className="mt-3"),
+    # 20. Define the Product dropdown menu:
+     dcc.Dropdown(
+        id="product-dropdown-menu",
+        options=prod_options, 
+        value=unique_products,
+        multi=True, # allows selecting more than one region
+        clearable=False, # must select at least ONE region
+        placeholder="Select one or more products" # the dropdown menu choices
+    )
 
-        # the dropdown menu choices
+    # 21. Assign label for the Line Chart (called Line Mode as it is interactive)
 
-            # allows user to select more than one region
-            # must have at least ONE region selected
-            # prompts the user
+    # 22. Define the Line Mode options as Radio Buttons (can only choose one)
 
-# 19. Assign label for the Product dropdown menu
+                
+    # 23. Specify the options for the radio button set
 
+            # radio buttons run horiz -- not stacked
+
+    # 24. Assign label to Date Range picker
         
-# 20. Define the Product dropdown menu, which requires the following properties: 
-#     id, options, value, multi, clearable and placeholder props
-        
-        # the dropdown menu choices
-
-            # allows user to select more than one region
-            # must have at least ONE region selected
-            # prompts the user
-
-
-# 21. Assign label for the Line Chart (called Line Mode as it is interactive)
-
-# 22. Define the Line Mode options as Radio Buttons (can only choose one)
-
             
-# 23. Specify the options for the radio button set
-
-        # radio buttons run horiz -- not stacked
-
-# 24. Assign label to Date Range picker
-      
-        
-# 24. Define the DatePickerRange with these properties:
-# min_date_allowed, max_date_allowed, start_date, end_date, display_format
+    # 24. Define the DatePickerRange with these properties:
+    # min_date_allowed, max_date_allowed, start_date, end_date, display_format
 
     # add drop shadow w rounded corners
-
+    
+]) # close controls = boot.Card()
 
 # Layout App Dashboard with its 3 Charts
 
@@ -209,7 +242,8 @@ app.layout = boot.Container([
                     "display": "block",
                     "margin": "0 auto",
                 }
-            ),
+            ), # end Img (toys.jpg image and style)
+            controls, # output the UI controls
         ],
             # 29C. Style col containing toy pic; 
             # UI controls go under here in new row, same col
@@ -227,9 +261,11 @@ app.layout = boot.Container([
         ),
         # 30. make another Col (same Row) to hold the graphs
         boot.Col([
-            dcc.Graph(figure=line_chart,
+            dcc.Graph(figure=line_chart, id="rev-line-chart",
                 style={"height": "450px",}),
-            dcc.Graph(figure=bar_chart,
+            dcc.Graph(figure=bar_chart, id="prod-bar-chart",
+                style={"height": "450px",}),
+            dcc.Graph(figure=heatmap_fig, id="heatmap-chart",
                 style={"height": "450px",}),
         ],
         md=8
@@ -241,71 +277,90 @@ app.layout = boot.Container([
     fluid=True,
 ) # close bootstrap container
 
-
-
 # 31. define the app callback decorator function which has no name but just runs automatically whenever UI component
 # such as Dropdown menu is changed
-
-    # 32. specify the output, which are the update figrues; the output has an id which goes here and in the layout
-    # what this says is: go to the layout and update the item, which has this id, and update the figureff
+@app.callback(
+    # 32. specify the output, which are the figures to update; the output has an id which goes here and in the layout
+    # what this says is: go to the layout and update the item, which has this id, and update the figure data
+    Output("rev-line-chart", "figure"),
+    Output("prod-bar-chart", "figure"),
+    Output("heatmap-chart", "figure"),
 
     # 33. instruct the function to get its inputs from the UI
-    # component that has the following id and get its value
-    # here we tell the func to get the value of the region menu
+    # components that have the following id's and get those values
+    # here we tell the func to get the values of the region and product menus
+    Input("region-dropdown-menu", "value"),
+    Input("product-dropdown-menu", "value"),
 
+)
 
 # 34. under the app callback decorator which handled Input Output
-#   define a function that actually updates the menu and line chart
-#   this function can be called whatever you want and it does NOT
-#   get called in the code explicitly by you -- the decorate and this
-#   func are connected cuz this is directly under the @app.callback
-#   this func receives Input as its param and Output is its return value
-
+#   define a function that actually updates the line chart, bar chart and heatmap
+#   this function can be given whatever name you want and it does NOT
+#   get called in the code explicitly by you -- the decorator and this
+#   func are connected cuz this func is directly under the @app.callback decorator
+#   this func receives Input as its param 
+#   the Output is the function's return value
+def update_figs(selected_regions, selected_products):
     
     # 35. get all the rows that have a 'region' value in unique_regions
     # this is ALL rows, cuz EVERY region is in unique_regions
     # the return value is saved as mask by convention
+    region_mask = toys_df["region"].isin(selected_regions)
 
-     
-    # 36. make a copy of the df for use in rebuilding line chart
-    # df.loc[mask] select only those rows where the region is selected
+    # 36. re-do the df for use in rebuilding line chart based on the masked values
+    # new_df = df.loc[mask] select only those rows where the region is selected
     # filter out unselected regions
-    
-    # 37. update / redeclare the rev_by_date_df using only selected regions
- 
+    selected_regions_df = toys_df.loc[region_mask]
 
+    # 37. update / redeclare the rev_by_date_df using only selected regions
+    #.    in the groupby() .. it's revenue by date for use in the line chart
+    selected_regions_revenue_by_date_df = selected_regions_df.groupby("date", as_index=False)["revenue"].sum()
+ 
     # 38. check which radio btn is selected and use that to make the line chart
     # if Aggregate btn is selected, make unified line
 
-        
         # 39. update / redeclare the line chart using the updated rev_by_date_df df
 
         # puts dots on the points connected by the line      
         
     # 40. else check if the radio button choice is region
 
-        # 41. update / redeclare the line chart using the updated rev_by_date_df df
-
-        # puts dots on the points connected by the line      
-        
+    # 41. update / redeclare the line chart using the updated data: this is the group by df that only has the region(s) that are selected in dropdown menu: 
+    line_chart = px.line(
+        selected_regions_revenue_by_date_df, # only contains rows for selected region(s)
+        x="date",
+        y="revenue",
+        title="Weekly Toy Sales Revenue (2023)",
+        markers=True,  # puts dots on the points connected by the line    
+    )
+         
     # 42. else the radio button choice must be product
     # mode is "product"
-
-        # 43. update the line chart
-
-       # puts dots on the points connected by the line      
+    # 43. update the line chart
         
     # 44. upldate the axes
+    line_chart.update_yaxes(tickprefix='$', separatethousands=True)
+    line_chart.update_layout(margin=dict(l=20,r=20,t=60,b=30))
 
-    # 45. update / redeclare the units_by_prod_df using only selected regions
+    # 45. update / redeclare the units_by_prod_df using only selected regions; 
+    # this is the groupby() df for use by the bar chart
+    selected_regions_avg_units_by_prod_df = selected_regions_df.groupby("product", as_index=False)["units"].mean().sort_values(by="units", ascending=False)
 
-    # 46. update / redeclare the bar chart using the updated rev_by_date_df df
+    # 46. update / redeclare the bar chart using the updated df
+    bar_chart = px.bar(
+        selected_regions_avg_units_by_prod_df,
+        x="product",
+        y="units",
+        title="Avg Units Sold by Product"
+    )
 
     # 47. redeclare the heatmap using the updated rev_by_date_df df
 
     # 48. update the heatmap
 
     # 49. return the updated line chart as specified in Output
+    return line_chart, bar_chart, heatmap_fig
 
 
 #  50. run app inside if block:
