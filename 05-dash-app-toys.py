@@ -32,18 +32,20 @@ app = Dash(__name__, external_stylesheets=[boot.themes.ZEPHYR])
 # they will come in as just strings, which we don't want
 # date,region,product,revenue,units
 # 2023-01-01,North,Widget,112.66,22
-toys_from_csv_df = pd.read_csv("./csv/toy-sales.csv", parse_dates=["date"])
-print("toys_from_csv_df:", toys_from_csv_df.shape) # (636, 5)
-print(toys_from_csv_df.head())
+toys_csv_df = pd.read_csv("./csv/toy-sales.csv", parse_dates=["date"])
+print("toys_csv_df.shape:", toys_csv_df.shape) # (636, 5)
+print(toys_csv_df.head())
 
 # load the toys data into a df again BUT this time from the SQL DB:
 # connect to the toys db, saving result as a connection object
 conn_toys = sqlite3.connect("./toys.db")
-# load all records from the toys table
-toys_df = pd.read_sql("SELECT * from toys",conn_toys)
+# # load all records from the toys table
+toys_df = pd.read_sql("SELECT * from toys", conn_toys)
+toys_df["date"] = pd.to_datetime(toys_df["date"], errors="coerce")
+
 # check if we got our data from the SQL DB:
-print("toys_df from sql:", toys_df.shape) # (636, 5)
-print(toys_df.head())
+# print("toys_df from sql:", toys_df.shape) # (636, 5)
+# print(toys_df.head())
 # close the db connection
 conn_toys.close()
 
@@ -322,6 +324,9 @@ app.layout = boot.Container([
     # def update_figs(selected_regions, selected_products):
     Input("region-dropdown-menu", "value"),
     Input("product-dropdown-menu", "value"),
+    Input("line-mode-radio-btns", "value"),
+    Input("date-picker", "start_date"),
+    Input("date-picker", "end_date"),
 
 )
 
@@ -332,13 +337,20 @@ app.layout = boot.Container([
 #   func are connected cuz this func is directly under the @app.callback decorator
 #   this func receives Input as its param 
 #   the Output is the function's return value
-def update_figs(selected_regions, selected_products):
+#   radio_btn_mode is the value of the radio button set: "agg", "product" or "region"
+def update_figs(selected_regions, selected_products, radio_btn_mode, start_date, end_date):
     
     # 35. get all the rows that have a 'region' value in unique_regions
     # this is ALL rows, cuz EVERY region is in unique_regions
     # the return value is saved as mask by convention
     # & for adding more filters, starting w selected_products
-    mask = toys_df["region"].isin(selected_regions) & toys_df["product"].isin(selected_products)
+    # wrap all in () to allow for line breaks for ease of reading:
+    mask = (
+        (toys_df["region"].isin(selected_regions)) & 
+        (toys_df["product"].isin(selected_products)) & 
+        (toys_df["date"] >= pd.to_datetime(start_date)) & 
+        (toys_df["date"] <= pd.to_datetime(end_date))
+    )
     
     # 36. re-do the df for use in rebuilding line chart based on the masked values
     # selected_df = toys_df.loc[mask] select only those rows where the region(s) and product(s) are selected
@@ -346,28 +358,43 @@ def update_figs(selected_regions, selected_products):
     selected_df = toys_df.loc[mask]
 
     # 37. update / redeclare the rev_by_date_df using only selected regions
-    #.    in the groupby() .. it's revenue by date for use in the line chart
+    #. in the groupby() .. it's revenue by date for use in the line chart
     selected_revenue_by_date_df = selected_df.groupby("date", as_index=False)["revenue"].sum()
  
     # 38. check which radio btn is selected and use that to make the line chart
     # if Aggregate btn is selected, make unified line
-
-        # 39. update / redeclare the line chart using the updated rev_by_date_df df  
+    if radio_btn_mode == "agg": 
+        # 39. update / redeclare the line chart using the updated selected_revenue_by_date_df  
+        line_chart = px.line(
+            selected_revenue_by_date_df,
+            x="date", y="revenue",
+            title="Weekly Toy Sales Revenue (2023)",
+            markers=True,  
+        )
+    # 40. else check if radio button choice is region
+    elif radio_btn_mode == "region": 
+        # 40B. redo the groupby() for the line chart; the double group by splits the line: 
+        selected_revenue_by_region_by_date_df = ( selected_df.groupby(["date","region"], as_index=False)["revenue"].sum().sort_values(["date","region"]) )
         
-    # 40. else check if the radio button choice is region
-
-    # 41. update / redeclare the line chart using the updated data: this is the group by df that only has the region(s) that are selected in dropdown menu: 
-    line_chart = px.line(
-        selected_revenue_by_date_df, # only contains rows for selected region(s)
-        x="date",
-        y="revenue",
-        title="Weekly Toy Sales Revenue (2023)",
-        markers=True,  # puts dots on the points connected by the line    
-    )
-         
+        # 41. update / redeclare the line chart using the updated data: this is the group by df that only has the region(s) that are selected in dropdown menu; here, in the multi-line chart
+        # where x is date and y is revenue, region is effectively the 3rd dimension: x,y,color
+        line_chart = px.line(
+            selected_revenue_by_region_by_date_df,
+            x="date", y="revenue",
+            title="Weekly Toy Sales Revenue by Region (2023)",
+            color="region", markers=True,  
+        )
     # 42. else the radio button choice must be product
-    # mode is "product"
-    # 43. update the line chart
+    else: # mode is "product", so redo the groupby()
+        selected_revenue_by_prod_by_date_df = ( selected_df.groupby(["date","product"], as_index=False)["revenue"].sum().sort_values(["date","product"]) )
+        
+        # 43. update the line chart
+        line_chart = px.line(
+            selected_revenue_by_prod_by_date_df,
+            x="date", y="revenue",
+            title="Weekly Toy Sales Revenue by Product (2023)",
+            color="product", markers=True,  
+        )
         
     # 44. upldate the axes
     line_chart.update_yaxes(tickprefix='$', separatethousands=True)
